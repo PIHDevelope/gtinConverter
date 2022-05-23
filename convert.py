@@ -57,12 +57,7 @@ def get_file_name(file: str) -> str:
 
 
 def on_press(key):
-    pass
-
-
-def on_release(key):
     return False
-
 
 if __name__ == "__main__":
 
@@ -156,7 +151,6 @@ if __name__ == "__main__":
                 os.remove(input_file_path)
 print("Нажмите любую клавишу для закрытия...")
 with keyboard.Listener(
-        on_press=on_press,
-        on_release=on_release) as listener:
+        on_press=on_press) as listener:
     listener.join()
 #
