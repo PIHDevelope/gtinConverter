@@ -1,3 +1,4 @@
+from math import dist
 import os
 import pathlib
 import re
@@ -18,6 +19,8 @@ OUTPUT_DIRECTORY: str = "Output"
 OUTPUT_FILE_EXT: str = "xlsx"
 
 DICTIONARY_DIRECTORY: str = "Dictionary"
+DICTIONARY_READY_DIRECTORY: str = "Ready"
+DICTIONARY_DIRECTORY_FILE: str = "dict"
 DICTIONARYFILE_NAME: str = "dict"
 DICTIONARY_FILE_EXT: str = "txt"
 
@@ -59,6 +62,20 @@ def get_file_name(file: str) -> str:
 def on_press(key):
     return False
 
+
+def parse_dictionary_file(path: str) -> dict[str, str]:
+    search_pattern = r"(.*)(\s+)(\d{13}$)"
+    result: dict[str, str] = {}
+    with open(path) as dictionary_file:
+        for line in dictionary_file:
+            search_result = re.findall(search_pattern, line)
+            if len(search_result) > 0:
+                result[search_result[0][2]] = search_result[0][0]
+            else:
+                pass
+    return result
+
+
 if __name__ == "__main__":
 
     colorama.init()
@@ -79,10 +96,10 @@ if __name__ == "__main__":
     instruction_list: List[str] = []
     if not input_exits or SHOW_INSTRUCTION:
         instruction_list.append(
-            f"Положите файлы  для преобразования в папку {INPUT_DIRECTORY}.")
+            f"Положите файлы  для преобразования в папку \"{INPUT_DIRECTORY}.\"")
     if not output_exists or SHOW_INSTRUCTION:
         instruction_list.append(
-            f"Заберите преобразованные файлы в папке {INPUT_DIRECTORY}.")
+            f"Заберите преобразованные файлы в папке \"{INPUT_DIRECTORY}.\"")
     if not dictinary_exists or SHOW_INSTRUCTION:
         instruction_list.append(
             f"Положите файл в папку {DICTIONARY_DIRECTORY}.")
@@ -97,26 +114,42 @@ if __name__ == "__main__":
     gtin_dictionary: dict[str, str] = {}
     #
     if len(dictionary_file_list) == 0:
-        print(f"{Back.RED}Словарь пуст! Убедитесь, что в папке {DICTIONARY_DIRECTORY} распологается словарь. Словарь - это файл с расширением {DICTIONARY_FILE_EXT}.{Style.RESET_ALL}")
+        print(f"{Back.RED}Словарь пуст! Убедитесь, что в папке \"{DICTIONARY_DIRECTORY}\" распологается словарь. Словарь - это файл с расширением \"{DICTIONARY_FILE_EXT}\".{Style.RESET_ALL}")
     else:
         #
-        search_pattern = r"(.*)(\s+)(\d{13}$)"
-        for dictionary_file in dictionary_file_list:
-            with open(SLASH.join([DICTIONARY_DIRECTORY, dictionary_file])) as gtin_dictionary_file:
-                for line in gtin_dictionary_file:
-                    search_result = re.findall(search_pattern, line)
-                    if len(search_result) > 0:
-                        gtin_dictionary[search_result[0]
-                                        [2]] = search_result[0][0]
-                    else:
-                        pass
+        dictionary_ready_file_path = DOT.join(
+            [DICTIONARY_DIRECTORY_FILE, DICTIONARY_FILE_EXT])
+        dictionary_ready_directory_path = SLASH.join([DICTIONARY_DIRECTORY,
+                                                      DICTIONARY_READY_DIRECTORY])
+        dictionary_ready_directory_is_exists = check_for_directory_is_exists_and_create_if_not(
+            dictionary_ready_directory_path)
+
+        dictionary_ready_file_full_path = SLASH.join(
+            [dictionary_ready_directory_path, dictionary_ready_file_path])
+
+        dictionary_ready_file_is_exists = dictionary_ready_directory_is_exists and (dictionary_ready_file_path in filter_file_list_by_file_extension(get_file_list(
+            dictionary_ready_directory_path), DICTIONARY_FILE_EXT))
+        #
+        if not dictionary_ready_file_is_exists:
+            for dictionary_file in dictionary_file_list:
+                gtin_dictionary = gtin_dictionary | parse_dictionary_file(
+                    SLASH.join([DICTIONARY_DIRECTORY, dictionary_file]))
+            with open(dictionary_ready_file_full_path, "w") as dictionary_ready_file:
+                for gtin_item in gtin_dictionary:
+                    dictionary_ready_file.write(
+                        f"{gtin_dictionary[gtin_item]} {gtin_item}\n")
+            print(
+                f"{Back.LIGHTBLUE_EX}Словарь создан! .{Style.RESET_ALL}")
+        else:
+            gtin_dictionary = parse_dictionary_file(
+                dictionary_ready_file_full_path)
         #
         search_pattern = r"(\))(\d+)(\()"
         if len(input_file_list) == 0:
-            print(f"{Back.RED}Отсутствуют входные файлы для преобразования! Убедитесь, что в папке {INPUT_DIRECTORY} распологаются файлы. Это файлы с расширением {INPUT_FILE_EXT}.{Style.RESET_ALL}.{Style.RESET_ALL}")
+            print(f"{Back.LIGHTRED_EX}Отсутствуют входные файлы для преобразования! Убедитесь, что в папке \"{INPUT_DIRECTORY}\" распологаются файлы. Это файлы с расширением {INPUT_FILE_EXT}.{Style.RESET_ALL}")
         else:
             print(
-                f"{Back.BLUE}Все преобразованные файлы находятся в папке {OUTPUT_DIRECTORY}. После выполнения преобразования входные файлы удаляются!{Style.RESET_ALL}")
+                f"{Back.BLUE}Все преобразованные файлы находятся в папке \"{OUTPUT_DIRECTORY}\". После выполнения преобразования входные файлы удаляются!{Style.RESET_ALL}")
             for input_file in input_file_list:
                 output_file_name = get_file_name(input_file)
                 output_file = DOT.join([output_file_name, OUTPUT_FILE_EXT])
